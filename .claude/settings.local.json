@@ -1,3 +1,9 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npm audit:*)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/react/package.json'\\).version, require\\('./node_modules/react-dom/package.json'\\).version\\)\")"
+    ]
+  },
   "outputStyle": "default"
 }

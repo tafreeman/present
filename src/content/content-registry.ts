@@ -9,6 +9,8 @@
 import type { DeckContent } from "./content-types.ts";
 import { mergeDeckContent } from "./merge-deck-content.ts";
 import type { MergedDeck } from "./merge-deck-content.ts";
+import { validateContentPack, validateLayoutsExist } from "../patterns/decks/schema.ts";
+import { layoutRegistry } from "../layouts/registry.ts";
 
 // ── Content packs (static JSON imports) ─────────────────────────────────
 import currentContent from "./current/content.json";
@@ -48,55 +50,31 @@ interface DeckStructureEntry {
 
 // ── Build registries ────────────────────────────────────────────────────
 
+// ── Content pack factory ────────────────────────────────────────────────
+//
+// Validates each raw JSON import at registration time (soft validation —
+// logs warnings, never throws, so a single bad content file doesn't
+// prevent the rest of the app from loading).
+
+function makeContentPack(
+  id: string,
+  label: string,
+  raw: unknown,
+): ContentPack {
+  validateContentPack(id, raw);
+  const data = raw as DeckContent;
+  return { id, label, slideIds: Object.keys(data.slides), data };
+}
+
 export const CONTENT_PACKS: Record<string, ContentPack> = {
-  current: {
-    id: "current",
-    label: "Current (Advocacy)",
-    slideIds: Object.keys(currentContent.slides),
-    data: currentContent as DeckContent,
-  },
-  genai: {
-    id: "genai",
-    label: "GenAI Case Study",
-    slideIds: Object.keys(genaiContent.slides),
-    data: genaiContent as DeckContent,
-  },
-  engineering: {
-    id: "engineering",
-    label: "Engineering",
-    slideIds: Object.keys(engineeringContent.slides),
-    data: engineeringContent as DeckContent,
-  },
-  onboarding: {
-    id: "onboarding",
-    label: "Onboarding",
-    slideIds: Object.keys(onboardingContent.slides),
-    data: onboardingContent as DeckContent,
-  },
-  "atelier-sage": {
-    id: "atelier-sage",
-    label: "Atelier Sage",
-    slideIds: Object.keys(atelierSageContent.slides),
-    data: atelierSageContent as DeckContent,
-  },
-  "signal-cobalt": {
-    id: "signal-cobalt",
-    label: "Signal Cobalt",
-    slideIds: Object.keys(signalCobaltContent.slides),
-    data: signalCobaltContent as DeckContent,
-  },
-  "verge-pop": {
-    id: "verge-pop",
-    label: "Verge Pop",
-    slideIds: Object.keys(vergePopContent.slides),
-    data: vergePopContent as DeckContent,
-  },
-  studio: {
-    id: "studio",
-    label: "Studio Handbook",
-    slideIds: Object.keys(studioContent.slides),
-    data: studioContent as DeckContent,
-  },
+  current:        makeContentPack("current",        "Current (Advocacy)",  currentContent),
+  genai:          makeContentPack("genai",           "GenAI Case Study",    genaiContent),
+  engineering:    makeContentPack("engineering",     "Engineering",         engineeringContent),
+  onboarding:     makeContentPack("onboarding",      "Onboarding",          onboardingContent),
+  "atelier-sage": makeContentPack("atelier-sage",    "Atelier Sage",        atelierSageContent),
+  "signal-cobalt":makeContentPack("signal-cobalt",   "Signal Cobalt",       signalCobaltContent),
+  "verge-pop":    makeContentPack("verge-pop",       "Verge Pop",           vergePopContent),
+  studio:         makeContentPack("studio",          "Studio Handbook",     studioContent),
 };
 
 export const DECK_STRUCTURES: Record<string, DeckStructureEntry> = {
@@ -191,6 +169,17 @@ export function buildDeckFromContent(
   const structureEntry = DECK_STRUCTURES[deckKey];
   const contentPack = CONTENT_PACKS[contentId];
   if (!structureEntry || !contentPack) return null;
+
+  // Validate that all layout IDs in the structure are registered.
+  // Catches layout typos in structure.js files at runtime rather than
+  // silently rendering the LayoutRenderer error fallback.
+  validateLayoutsExist(
+    {
+      themeId: structureEntry.id,
+      slides: structureEntry.structure.contentSlides as Array<{ id: string; layout: string }>,
+    },
+    layoutRegistry,
+  );
 
   return mergeDeckContent(structureEntry.structure, contentPack.data);
 }

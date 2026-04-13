@@ -2,8 +2,9 @@
  * Particles — canvas-based particle system.
  *
  * Extracted from the monolith (genai_advocacy_hub_13.jsx lines 464-553).
- * Supports three particle behaviours: 'hurdles' (upward burst),
- * 'human' (gentle drift with connecting lines), and 'sprint' (orbital).
+ * Supports four particle behaviours: 'hurdles' (upward burst),
+ * 'human' (gentle drift with connecting lines), 'sprint' (orbital),
+ * and 'future' (slow rising starfield with fade lifecycle).
  *
  * @example
  *   <Particles color="#F59E0B" type="hurdles" active={true} />
@@ -44,8 +45,14 @@ interface Particle {
 interface ParticlesProps {
   /** Base colour for particles (hex, e.g. "#F59E0B") */
   color: string;
-  /** Particle behaviour preset */
-  type: "hurdles" | "human" | "sprint";
+  /**
+   * Particle behaviour preset:
+   * - hurdles: upward burst (60 particles, resets from bottom)
+   * - human: gentle sine/cosine drift with connecting lines (30 particles)
+   * - sprint: orbital around centre (40 particles)
+   * - future: slow rising starfield with fade lifecycle (45 particles)
+   */
+  type: "hurdles" | "human" | "sprint" | "future";
   /** Whether the animation is running */
   active: boolean;
 }
@@ -74,6 +81,8 @@ function Particles({ color, type, active }: ParticlesProps) {
       n = 60;
     } else if (type === "sprint") {
       n = 40;
+    } else if (type === "future") {
+      n = 45;
     } else {
       n = 30;
     }
@@ -86,8 +95,8 @@ function Particles({ color, type, active }: ParticlesProps) {
         vx: hurdleParticle ? (getRandomUnit() - 0.3) * 3 : (getRandomUnit() - 0.5) * 0.5,
         vy: hurdleParticle ? -getRandomUnit() * 4 - 1 : (getRandomUnit() - 0.5) * 0.5,
         r: hurdleParticle ? getRandomUnit() * 3 + 1 : getRandomUnit() * 2 + 1,
-        o: getRandomUnit() * 0.5 + 0.15,
-        life: getRandomUnit() * 100,
+        o: type === "future" ? 0 : getRandomUnit() * 0.5 + 0.15,
+        life: type === "future" ? Math.floor(getRandomUnit() * 200) : getRandomUnit() * 100,
       });
     }
 
@@ -119,6 +128,29 @@ function Particles({ color, type, active }: ParticlesProps) {
           if (d > Math.max(W, H) * 0.55) {
             p.x = cx + (getRandomUnit() - 0.5) * W * 0.4;
             p.y = cy + (getRandomUnit() - 0.5) * H * 0.4;
+          }
+        } else if (type === "future") {
+          // Slow rising starfield: particles drift upward with a gentle sway,
+          // fading in from 0→peak opacity, holding, then fading out as they
+          // reach the top and reset from a random position at the bottom.
+          const LIFECYCLE = 220;
+          const FADE_IN = 60;
+          const FADE_OUT = 60;
+          p.y -= 0.28 + p.r * 0.06;
+          p.x += Math.sin(p.life * 0.025 + p.r) * 0.18;
+          if (p.life < FADE_IN) {
+            p.o = (p.life / FADE_IN) * 0.55;
+          } else if (p.life > LIFECYCLE - FADE_OUT) {
+            p.o = ((LIFECYCLE - p.life) / FADE_OUT) * 0.55;
+          } else {
+            p.o = 0.55;
+          }
+          if (p.life >= LIFECYCLE || p.y < -p.r) {
+            p.x = getRandomUnit() * W;
+            p.y = H + p.r;
+            p.life = 0;
+            p.o = 0;
+            p.r = getRandomUnit() * 2 + 0.8;
           }
         } else {
           p.x += p.vx;

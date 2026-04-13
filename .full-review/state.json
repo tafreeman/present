@@ -1,0 +1,16 @@
+{
+  "target": "C:\\Users\\tandf\\source\\present (full codebase)",
+  "status": "in_progress",
+  "flags": {
+    "security_focus": false,
+    "performance_critical": false,
+    "strict_mode": false,
+    "framework": "React 18 + Vite 5 + TypeScript"
+  },
+  "current_step": 1,
+  "current_phase": 1,
+  "completed_steps": ["00-scope"],
+  "files_created": ["00-scope.md"],
+  "started_at": "2026-04-13T00:00:00.000Z",
+  "last_updated": "2026-04-13T00:00:00.000Z"
+}

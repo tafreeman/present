@@ -140,4 +140,45 @@ export function validateLayoutsExist(
   }
 }
 
+/* ── ContentPack schema (validates content.json files) ────────── */
+//
+// content.json files have a different shape from DeckManifest:
+//   { deck: { brandLine, title, ... }, slides: Record<string, slide> }
+// This schema validates that shape for runtime safety.
+
+const IntroStatSchema = z.object({
+  val: z.string(),
+  lbl: z.string(),
+});
+
+const DeckMetaSchema = z.object({
+  brandLine: z.string(),
+  title: z.string(),
+  titleAccent: z.string().optional(),
+  tagline: z.string().optional(),
+  introBrandLine: z.string().optional(),
+  introTitle: z.string().optional(),
+  introSubtitle: z.string().optional(),
+  introStats: z.array(IntroStatSchema).optional(),
+  stats: z.array(IntroStatSchema).optional(),
+}).passthrough();
+
+export const ContentPackDataSchema = z.object({
+  deck: DeckMetaSchema,
+  slides: z.record(z.string(), SlideSchema),
+});
+
+/**
+ * Validate a raw content.json import against the ContentPackDataSchema.
+ * Logs a warning on failure rather than throwing — invalid content is
+ * displayed with degraded fidelity rather than crashing the presenter.
+ */
+export function validateContentPack(id: string, data: unknown): void {
+  const result = ContentPackDataSchema.safeParse(data);
+  if (!result.success) {
+    const errors = result.error.flatten();
+    console.warn(`[ContentPack "${id}"] Validation warnings:`, errors);
+  }
+}
+
 export { DeckManifestSchema, SlideSchema, SprintNodeSchema };
